@@ -35,7 +35,9 @@ class Config:
     # Dynamic Inputs (Time-Series)
     # Naming convention matches the cleaned output from data_loader
     DYNAMIC_FEATURES = [
-        'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp'
+        'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp',   # Original Forcing
+        'PRCP_roll3', 'PRCP_roll7',             # New Rolling Stats
+        'Q_lag1', 'Q_lag2', 'Q_lag3'            # New Lag Features
     ]
 
     # Static Inputs (Basin Attributes)
