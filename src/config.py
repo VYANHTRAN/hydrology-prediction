@@ -10,6 +10,9 @@ class Config:
 
     # --- CONSTANTS ---
     CFS_TO_CMS = 0.0283168
+
+    # --- EXPERIMENT SETTINGS ---
+    USE_STATIC = True        # Set to False to train without static features 
     
     # --- HYPERPARAMETERS ---
     SEQ_LENGTH = 60          # Lookback window (days). 60 covers the lag response we saw.
