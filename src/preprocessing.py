@@ -1,10 +1,10 @@
 import numpy as np
-import pandas as pd
+import pandas as pd 
 from config import Config
 
 class CamelsPreprocessor:
-    def __init__(self, config):
-        self.cfg = config
+    def __init__(self):
+        self.cfg = Config()
         self.scalers = {} 
         self.basin_scalers = {} 
         
