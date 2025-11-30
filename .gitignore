@@ -1,0 +1,40 @@
+# --- Data ---
+# Ignore the main dataset folder
+basin_dataset_public/
+
+# Ignore zip archives if you have them
+*.zip
+*.tar.gz
+*.rar
+
+# --- Python ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Jupyter Notebooks ---
+# Checkpoints created by Jupyter
+.ipynb_checkpoints
+
+# --- IDE Settings ---
+# VS Code
+.vscode/
+# PyCharm
+.idea/
+
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db
+
+# --- Future Model Outputs ---
+# Ignore saved model weights (PyTorch/TensorFlow)
+*.pt
+*.pth
+*.h5
+*.keras
+
+# Ignore directories for outputs
+models/
+logs/
+results/
