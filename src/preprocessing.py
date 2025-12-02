@@ -8,6 +8,9 @@ class CamelsPreprocessor:
         self.scalers = {} 
         self.basin_scalers = {} 
         
+        self.climatology_means = None 
+        self.global_means = None 
+        
         # Physical Constraints
         self.PHYSICAL_LIMITS = {
             'PRCP': {'min': 0.0, 'max': None},
@@ -26,14 +29,14 @@ class CamelsPreprocessor:
 
     def clean_physical_outliers(self, df):
         """Ensure the data does not exceed logical constraints."""
-        # 1. Negative Rain/Flow -> 0
+        # Ensure that the precipiation could not be negative.
         for col in ['PRCP', self.cfg.TARGET]:
             if col in df.columns:
                 mask = df[col] < 0
                 if mask.any(): 
                     df.loc[mask, col] = 0.0
         
-        # 2. Unrealistic Temp -> NaN
+        # Ensure that the temperature does not exceed the logical constraints. 
         for col in ['Tmax', 'Tmin']:
             if col in df.columns:
                 limits = self.PHYSICAL_LIMITS[col]
@@ -42,30 +45,83 @@ class CamelsPreprocessor:
                     df.loc[mask, col] = np.nan
         return df
 
+    def fit_imputer(self, train_data_dict):
+        """
+        Learn seasonal patterns from training set and impute using that patterns.
+        Example: if a value in 15-01-1990, impute using values from the same day in different years.
+        """     
+        dfs = []
+        for _, df in train_data_dict.items():
+            if not df.empty:
+                dfs.append(df)
+        
+        if not dfs:
+            print("Warning: No training data to fit imputer.")
+            return
+
+        full_train = pd.concat(dfs, axis=0)
+        
+        cols_to_learn = self.cfg.DYNAMIC_FEATURES + [self.cfg.TARGET]
+        cols_to_learn = [c for c in cols_to_learn if c in full_train.columns]
+        
+        # 1. Calculate global mean for fallback 
+        self.global_means = full_train[cols_to_learn].mean()
+
+        # 2. Calculate Climatological Mean 
+        # Group by day of year 
+        full_train['doy'] = full_train.index.dayofyear
+        self.climatology_means = full_train.groupby('doy')[cols_to_learn].mean()
+        
+        # Handle rare cases of dates that have not appeared in training set 
+        # Fill missing values by global mean in these cases 
+        expected_days = np.arange(1, 367)
+        self.climatology_means = self.climatology_means.reindex(expected_days).fillna(self.global_means)
+
     def handle_missing_data(self, df):
-        """Use Linear Interpolation to fill in short gaps."""
+        """
+        1. Linear Interpolation for short gaps.
+        2. Fill bigger gaps by climatology means.
+        """
         cols_to_fix = [self.cfg.TARGET] + self.cfg.DYNAMIC_FEATURES
         cols_to_fix = [c for c in cols_to_fix if c in df.columns]
 
+        # 1. Linear Interpolate short gaps 
         for col in cols_to_fix:
-            # Linear Interpolate short gaps only
-            df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='forward')
-            # Handle edges
-            df[col] = df[col].ffill().bfill()
+            df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='both')
+
+        # 2. Fill remaining missing values by climatological mean. 
+        if self.climatology_means is not None:
+            # Use day of year as indexes for df 
+            doy_series = df.index.dayofyear
+            
+            # Create a reference df with climatological mean 
+            # df.index ->  dayofyear -> search reference df for self.climatology_means
+            climatology_values = self.climatology_means.loc[doy_series, cols_to_fix]
+            
+            # Reset index of climatology_values 
+            climatology_values.index = df.index
+            
+            # Fill NaN by climatological mean
+            df.fillna(climatology_values, inplace=True)
+        
+        # Fallback with Global Mean 
+        if self.global_means is not None:
+            df.fillna(self.global_means, inplace=True)
+            
+        df.fillna(0, inplace=True)
+        
         return df
 
     def fit(self, dynamic_data_dict, static_df=None):
         """
-        Computes stats. Handles case where static_df is None.
+        Calculate Mean/Std (only fit on training data). 
         """
         # 1. Dynamic Stats
         dyn_vals = []
         for gid, df in dynamic_data_dict.items():
-            train_slice = df.loc[self.cfg.TRAIN_START:self.cfg.TRAIN_END]
-            if not train_slice.empty:
-                valid_rows = train_slice[self.cfg.DYNAMIC_FEATURES].dropna()
-                if not valid_rows.empty:
-                    dyn_vals.append(valid_rows.values)
+            valid_rows = df[self.cfg.DYNAMIC_FEATURES]
+            if not valid_rows.empty:
+                dyn_vals.append(valid_rows.values)
         
         if dyn_vals:
             all_dyn = np.vstack(dyn_vals)
@@ -75,20 +131,17 @@ class CamelsPreprocessor:
             self.scalers['dynamic_mean'] = 0
             self.scalers['dynamic_std'] = 1
 
-        # 2. Static Stats (Only if provided)
+        # 2. Static Stats
         if static_df is not None:
-            if 'area_gages2' in static_df.columns:
-                static_df['area_gages2'] = np.log10(np.maximum(static_df['area_gages2'], 1e-3))
-            self.scalers['static_mean'] = static_df.mean().values
-            self.scalers['static_std']  = static_df.std().values + 1e-6
-        else:
-            print("Skipping Static Stats (Static Data not provided)")
+            s_df = static_df.copy()
+            if 'area_gages2' in s_df.columns:
+                s_df['area_gages2'] = np.log10(np.maximum(s_df['area_gages2'], 1e-3))
+            self.scalers['static_mean'] = s_df.mean().values
+            self.scalers['static_std']  = s_df.std().values + 1e-6
 
         # 3. Basin Target Stats
         for gid, df in dynamic_data_dict.items():
-            train_slice = df.loc[self.cfg.TRAIN_START:self.cfg.TRAIN_END]
-            clean_target = train_slice[self.cfg.TARGET].dropna()
-            
+            clean_target = df[self.cfg.TARGET]
             if not clean_target.empty:
                 self.basin_scalers[gid] = {'mean': clean_target.mean(), 'std': clean_target.std() + 1e-6}
             else:
