@@ -78,8 +78,8 @@ def prepare_data(cfg, loader, engineer, preprocessor, num_basins=5):
 
         # 4. Split Data
         df_tr = df.loc[cfg.TRAIN_START:cfg.TRAIN_END].copy()
-        df_val = df.loc[cfg.VAL_START:cfg.VAL_END].copy()
-        df_te = df.loc[cfg.TEST_START:cfg.TEST_END].copy()
+        val_data = df.loc[cfg.VAL_START:cfg.VAL_END].copy()
+        test_data = df.loc[cfg.TEST_START:cfg.TEST_END].copy()
 
         # 5. Data Imputation 
         if not df_tr.empty:
@@ -138,7 +138,7 @@ def get_task2_dataset(cfg, data_dict, df_static, preprocessor, basin_ids):
         steps = cfg.PREDICT_STEPS
         total = len(data_matrix)
         n_dyn = len(cfg.DYNAMIC_FEATURES)
-        
+
         future_feat_indices = forcing_indices + [n_dyn, n_dyn + 1] 
         static_repeated = np.tile(static_vec, (seq_len, 1)) if (cfg.USE_STATIC and static_vec is not None) else None
         c_xp, c_xf, c_st, c_y = [], [], [], []
@@ -174,9 +174,7 @@ def get_task2_dataset(cfg, data_dict, df_static, preprocessor, basin_ids):
 # --- EXECUTION FUNCTIONS ---
 
 def run_task_1(args, cfg, device, train_data, val_data, test_data, df_static, preprocessor, basin_ids):
-    print("\n" + "="*40)
-    print(" TASK 1: Single Step Prediction (t+2)")
-    print("="*40)
+    print("TASK 1: Single Step Prediction (t+2)")
 
     X_train, y_train = get_task1_dataset(cfg, train_data, df_static, preprocessor, basin_ids)
     X_val, y_val = get_task1_dataset(cfg, val_data, df_static, preprocessor, basin_ids)
@@ -239,9 +237,7 @@ def run_task_1(args, cfg, device, train_data, val_data, test_data, df_static, pr
         save_results({'NSE': nse, 'Test_MSE': float(np.mean((y_test-preds)**2))}, vars(args), 'results/task1')
 
 def run_task_2(args, cfg, device, train_data, val_data, test_data, df_static, preprocessor, basin_ids):
-    print("\n" + "="*40)
     print(" TASK 2: Multi-Step Sequence (t+1..t+5)")
-    print("="*40)
 
     tr_data = get_task2_dataset(cfg, train_data, df_static, preprocessor, basin_ids)
     val_data_tuple = get_task2_dataset(cfg, val_data, df_static, preprocessor, basin_ids)
