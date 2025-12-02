@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd 
-from config import Config
+from .config import Config
 
 class CamelsPreprocessor:
     def __init__(self):
@@ -15,36 +15,41 @@ class CamelsPreprocessor:
             'Tmax': {'min': -60.0, 'max': 60.0},
             'Tmin': {'min': -60.0, 'max': 60.0}
         }
-        self.MAX_INTERPOLATE_GAP = 5 
+        self.MAX_INTERPOLATE_GAP = 2
 
     def add_date_features(self, df):
+        """Encode Time Series into Cyclical Features."""
         day_of_year = df.index.dayofyear
         df['sin_doy'] = np.sin(2 * np.pi * day_of_year / 365.0)
         df['cos_doy'] = np.cos(2 * np.pi * day_of_year / 365.0)
         return df
 
     def clean_physical_outliers(self, df):
+        """Ensure the data does not exceed logical constraints."""
         # 1. Negative Rain/Flow -> 0
         for col in ['PRCP', self.cfg.TARGET]:
             if col in df.columns:
                 mask = df[col] < 0
-                if mask.any(): df.loc[mask, col] = 0.0
+                if mask.any(): 
+                    df.loc[mask, col] = 0.0
         
         # 2. Unrealistic Temp -> NaN
         for col in ['Tmax', 'Tmin']:
             if col in df.columns:
                 limits = self.PHYSICAL_LIMITS[col]
                 mask = (df[col] < limits['min']) | (df[col] > limits['max'])
-                if mask.any(): df.loc[mask, col] = np.nan
+                if mask.any(): 
+                    df.loc[mask, col] = np.nan
         return df
 
     def handle_missing_data(self, df):
+        """Use Linear Interpolation to fill in short gaps."""
         cols_to_fix = [self.cfg.TARGET] + self.cfg.DYNAMIC_FEATURES
         cols_to_fix = [c for c in cols_to_fix if c in df.columns]
 
         for col in cols_to_fix:
             # Linear Interpolate short gaps only
-            df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='both')
+            df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='forward')
             # Handle edges
             df[col] = df[col].ffill().bfill()
         return df
@@ -53,8 +58,6 @@ class CamelsPreprocessor:
         """
         Computes stats. Handles case where static_df is None.
         """
-        print("Computing global statistics...")
-        
         # 1. Dynamic Stats
         dyn_vals = []
         for gid, df in dynamic_data_dict.items():
@@ -79,10 +82,9 @@ class CamelsPreprocessor:
             self.scalers['static_mean'] = static_df.mean().values
             self.scalers['static_std']  = static_df.std().values + 1e-6
         else:
-            print("-> Skipping Static Stats (Static Data not provided)")
+            print("Skipping Static Stats (Static Data not provided)")
 
         # 3. Basin Target Stats
-        print("Computing basin-specific target statistics...")
         for gid, df in dynamic_data_dict.items():
             train_slice = df.loc[self.cfg.TRAIN_START:self.cfg.TRAIN_END]
             clean_target = train_slice[self.cfg.TARGET].dropna()
