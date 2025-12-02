@@ -40,7 +40,6 @@ class Config:
 
     # 2. ALL DYNAMIC INPUTS
     # This includes Forcing + Derived Engineering Features + Auto-regressive features
-    # NOTE: Order matters for the preprocessor, but main.py will now handle indices dynamically.
     DYNAMIC_FEATURES = [
         'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp',   
         'PRCP_roll3', 'PRCP_roll7',             
