@@ -39,10 +39,6 @@ class FeatureEngineer:
             # Flow 3 days ago (t-3)
             df['Q_lag3'] = df[target].shift(3)
             
-            # Note: Shifting creates NaNs at the top of the dataframe.
-            # These must be handled (backfilled) before normalization.
-            df[[f'Q_lag{i}' for i in range(1, 4)]] = df[[f'Q_lag{i}' for i in range(1, 4)]].bfill()
-            
         return df
 
     def transform(self, df):
