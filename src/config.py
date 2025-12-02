@@ -32,12 +32,19 @@ class Config:
     TEST_END    = '2010-09-30'
 
     # --- FEATURE SELECTION ---
-    # Dynamic Inputs (Time-Series)
-    # Naming convention matches the cleaned output from data_loader
+     # 1. PURE FORCING (Weather)
+    # These are variables we assume are known in the future (from weather forecasts)
+    FORCING_FEATURES = [
+        'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp'
+    ]
+
+    # 2. ALL DYNAMIC INPUTS
+    # This includes Forcing + Derived Engineering Features + Auto-regressive features
+    # NOTE: Order matters for the preprocessor, but main.py will now handle indices dynamically.
     DYNAMIC_FEATURES = [
-        'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp',   # Original Forcing
-        'PRCP_roll3', 'PRCP_roll7',             # New Rolling Stats
-        'Q_lag1', 'Q_lag2', 'Q_lag3'            # New Lag Features
+        'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp',   
+        'PRCP_roll3', 'PRCP_roll7',             
+        'Q_lag1', 'Q_lag2', 'Q_lag3'            
     ]
 
     # Static Inputs (Basin Attributes)
