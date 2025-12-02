@@ -10,3 +10,5 @@ tqdm>=4.60.0
 
 jupyter>=1.0.0
 notebook>=6.4.0
+
+torch>=2.0.0
