@@ -2,7 +2,7 @@ import os
 import glob
 import pandas as pd
 import numpy as np
-from config import Config
+from .config import Config
 
 class CamelsLoader:
     def __init__(self):
