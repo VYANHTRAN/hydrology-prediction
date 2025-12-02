@@ -50,66 +50,56 @@ class CamelsPreprocessor:
         Learn seasonal patterns from training set and impute using that patterns.
         Example: if a value in 15-01-1990, impute using values from the same day in different years.
         """     
-        dfs = []
-        for _, df in train_data_dict.items():
-            if not df.empty:
-                dfs.append(df)
-        
-        if not dfs:
-            print("Warning: No training data to fit imputer.")
-            return
+        self.basin_climatology = {}
+        self.basin_global_means = {}
 
-        full_train = pd.concat(dfs, axis=0)
-        
-        cols_to_learn = self.cfg.DYNAMIC_FEATURES + [self.cfg.TARGET]
-        cols_to_learn = [c for c in cols_to_learn if c in full_train.columns]
-        
-        # 1. Calculate global mean for fallback 
-        self.global_means = full_train[cols_to_learn].mean()
+        for gid, df in train_data_dict.items():
+            if df.empty: 
+                continue
+            
+            cols_to_learn = self.cfg.DYNAMIC_FEATURES + [self.cfg.TARGET]
+            cols_to_learn = [c for c in cols_to_learn if c in df.columns]
 
-        # 2. Calculate Climatological Mean 
-        # Group by day of year 
-        full_train['doy'] = full_train.index.dayofyear
-        self.climatology_means = full_train.groupby('doy')[cols_to_learn].mean()
-        
-        # Handle rare cases of dates that have not appeared in training set 
-        # Fill missing values by global mean in these cases 
-        expected_days = np.arange(1, 367)
-        self.climatology_means = self.climatology_means.reindex(expected_days).fillna(self.global_means)
+            # 1. Basin-specific Global Mean
+            self.basin_global_means[gid] = df[cols_to_learn].mean()
 
-    def handle_missing_data(self, df):
+            # 2. Basin-specific Climatology
+            df = df.copy()
+            df['doy'] = df.index.dayofyear
+            
+            # Calculate mean per DOY for this basin only
+            clim = df.groupby('doy')[cols_to_learn].mean()
+            
+            # Fill missing DOYs (e.g. leap days)
+            expected_days = np.arange(1, 367)
+            clim = clim.reindex(expected_days).fillna(self.basin_global_means[gid])
+            
+            self.basin_climatology[gid] = clim
+
+    def handle_missing_data(self, df, gauge_id):
         """
-        1. Linear Interpolation for short gaps.
-        2. Fill bigger gaps by climatology means.
+        Fill missing data with climatological means learned from training set. 
         """
         cols_to_fix = [self.cfg.TARGET] + self.cfg.DYNAMIC_FEATURES
         cols_to_fix = [c for c in cols_to_fix if c in df.columns]
 
-        # 1. Linear Interpolate short gaps 
         for col in cols_to_fix:
-            df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='both')
+            df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='forward')
 
-        # 2. Fill remaining missing values by climatological mean. 
-        if self.climatology_means is not None:
-            # Use day of year as indexes for df 
+        # Retrieve basin-specific stats
+        basin_clim = self.basin_climatology.get(gauge_id)
+        basin_mean = self.basin_global_means.get(gauge_id)
+
+        if basin_clim is not None:
             doy_series = df.index.dayofyear
-            
-            # Create a reference df with climatological mean 
-            # df.index ->  dayofyear -> search reference df for self.climatology_means
-            climatology_values = self.climatology_means.loc[doy_series, cols_to_fix]
-            
-            # Reset index of climatology_values 
+            climatology_values = basin_clim.loc[doy_series, cols_to_fix]
             climatology_values.index = df.index
-            
-            # Fill NaN by climatological mean
             df.fillna(climatology_values, inplace=True)
         
-        # Fallback with Global Mean 
-        if self.global_means is not None:
-            df.fillna(self.global_means, inplace=True)
+        if basin_mean is not None:
+            df.fillna(basin_mean, inplace=True)
             
         df.fillna(0, inplace=True)
-        
         return df
 
     def fit(self, dynamic_data_dict, static_df=None):
