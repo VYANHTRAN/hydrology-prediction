@@ -30,11 +30,13 @@ class CamelsLoader:
         """Scans directories and filters out bad basins."""
         bad_basins = self.load_bad_basins()
         
+        # Construct file paths for streamflow files 
         search_path = os.path.join(self.cfg.FLOW_DIR, '**', '*_streamflow_qc.txt')
         files = glob.glob(search_path, recursive=True)
         
         basins = []
         for f in files:
+            # Extract folder ID and gauge ID of each basins 
             parts = f.split(os.sep)
             region = parts[-2]
             gauge_id = parts[-1].split('_')[0]
@@ -54,7 +56,8 @@ class CamelsLoader:
         try:
             df_flow = pd.read_csv(flow_path, sep=r'\s+', header=None,
                                   names=['gauge_id', 'Year', 'Month', 'Day', 'Q_cfs', 'QC'])
-        except: return None
+        except: 
+            return None
 
         df_flow['Date'] = pd.to_datetime(df_flow[['Year', 'Month', 'Day']])
         df_flow.set_index('Date', inplace=True)
@@ -63,7 +66,8 @@ class CamelsLoader:
 
         # 2. Load Forcing (NLDAS)
         forcing_path = os.path.join(self.cfg.FORCING_DIR, region, f'{gauge_id}_lump_nldas_forcing_leap.txt')
-        if not os.path.exists(forcing_path): return None
+        if not os.path.exists(forcing_path): 
+            return None
 
         try:
             df_force = pd.read_csv(forcing_path, sep=r'\s+', skiprows=3)
@@ -107,13 +111,12 @@ class CamelsLoader:
         """
         Loads all attribute files, merges them, and filters for requested features.
         """
-        # Files to look for (based on your screenshot)
         files = ['camels_topo.txt', 'camels_soil.txt', 'camels_clim.txt', 
                  'camels_vege.txt', 'camels_geol.txt']
-        
         dfs = []
+
         for filename in files:
-            path = os.path.join(self.cfg.META_DIR, filename)
+            path = os.path.join(self.cfg.BASE_DIR, filename)
             if os.path.exists(path):
                 try:
                     df = pd.read_csv(path, sep=';')
@@ -124,7 +127,8 @@ class CamelsLoader:
                         dfs.append(df)
                 except: pass
         
-        if not dfs: return None
+        if not dfs: 
+            return None
 
         # Merge all static files
         df_static = pd.concat(dfs, axis=1)

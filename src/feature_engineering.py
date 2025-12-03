@@ -10,8 +10,7 @@ class FeatureEngineer:
         Calculates rolling statistics for Precipitation.
         Purpose: Represents accumulated soil moisture / wetness.
         """
-        # Ensure PRCP exists (it might be named differently if not cleaned, 
-        # but our data_loader standardizes it to 'PRCP')
+        # Ensure PRCP exists 
         if 'PRCP' in df.columns:
             # 3-Day Rolling Mean (Short-term wetness)
             df['PRCP_roll3'] = df['PRCP'].rolling(window=3, min_periods=1).mean()

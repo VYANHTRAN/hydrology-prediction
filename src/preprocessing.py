@@ -8,6 +8,9 @@ class CamelsPreprocessor:
         self.scalers = {} 
         self.basin_scalers = {} 
         
+        self.climatology_means = None 
+        self.global_means = None 
+        
         # Physical Constraints
         self.PHYSICAL_LIMITS = {
             'PRCP': {'min': 0.0, 'max': None},
@@ -24,13 +27,18 @@ class CamelsPreprocessor:
         return df
 
     def clean_physical_outliers(self, df):
+<<<<<<< Updated upstream
         # 1. Negative Rain/Flow -> 0
+=======
+        """Ensure the data does not exceed logical constraints."""
+        # Ensure that the precipiation could not be negative.
+>>>>>>> Stashed changes
         for col in ['PRCP', self.cfg.TARGET]:
             if col in df.columns:
                 mask = df[col] < 0
                 if mask.any(): df.loc[mask, col] = 0.0
         
-        # 2. Unrealistic Temp -> NaN
+        # Ensure that the temperature does not exceed the logical constraints. 
         for col in ['Tmax', 'Tmin']:
             if col in df.columns:
                 limits = self.PHYSICAL_LIMITS[col]
@@ -38,31 +46,86 @@ class CamelsPreprocessor:
                 if mask.any(): df.loc[mask, col] = np.nan
         return df
 
+<<<<<<< Updated upstream
     def handle_missing_data(self, df):
+=======
+    def fit_imputer(self, train_data_dict):
+        """
+        Learn seasonal patterns from training set and impute using that patterns.
+        Example: if a value in 15-01-1990, impute using values from the same day in different years.
+        """     
+        self.basin_climatology = {}
+        self.basin_global_means = {}
+
+        for gid, df in train_data_dict.items():
+            if df.empty: 
+                continue
+            
+            cols_to_learn = self.cfg.DYNAMIC_FEATURES + [self.cfg.TARGET]
+            cols_to_learn = [c for c in cols_to_learn if c in df.columns]
+
+            # 1. Basin-specific Global Mean
+            self.basin_global_means[gid] = df[cols_to_learn].mean()
+
+            # 2. Basin-specific Climatology
+            df = df.copy()
+            df['doy'] = df.index.dayofyear
+            
+            # Calculate mean per DOY for this basin only
+            clim = df.groupby('doy')[cols_to_learn].mean()
+            
+            # Fill missing DOYs (e.g. leap days)
+            expected_days = np.arange(1, 367)
+            clim = clim.reindex(expected_days).fillna(self.basin_global_means[gid])
+            
+            self.basin_climatology[gid] = clim
+
+    def handle_missing_data(self, df, gauge_id):
+        """
+        Fill missing data with climatological means learned from training set. 
+        """
+>>>>>>> Stashed changes
         cols_to_fix = [self.cfg.TARGET] + self.cfg.DYNAMIC_FEATURES
         cols_to_fix = [c for c in cols_to_fix if c in df.columns]
 
         for col in cols_to_fix:
+<<<<<<< Updated upstream
             # Linear Interpolate short gaps only
             df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='both')
             # Handle edges
             df[col] = df[col].ffill().bfill()
+=======
+            df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='forward')
+
+        # Retrieve basin-specific stats
+        basin_clim = self.basin_climatology.get(gauge_id)
+        basin_mean = self.basin_global_means.get(gauge_id)
+
+        if basin_clim is not None:
+            doy_series = df.index.dayofyear
+            climatology_values = basin_clim.loc[doy_series, cols_to_fix]
+            climatology_values.index = df.index
+            df.fillna(climatology_values, inplace=True)
+        
+        if basin_mean is not None:
+            df.fillna(basin_mean, inplace=True)
+            
+        df.fillna(0, inplace=True)
+>>>>>>> Stashed changes
         return df
 
     def fit(self, dynamic_data_dict, static_df=None):
         """
-        Computes stats. Handles case where static_df is None.
+        Calculate Mean/Std (only fit on training data). 
         """
         print("Computing global statistics...")
         
         # 1. Dynamic Stats
         dyn_vals = []
         for gid, df in dynamic_data_dict.items():
-            train_slice = df.loc[self.cfg.TRAIN_START:self.cfg.TRAIN_END]
-            if not train_slice.empty:
-                valid_rows = train_slice[self.cfg.DYNAMIC_FEATURES].dropna()
-                if not valid_rows.empty:
-                    dyn_vals.append(valid_rows.values)
+            valid_rows = df[self.cfg.DYNAMIC_FEATURES]
+            if not valid_rows.empty:
+                dyn_vals.append(valid_rows.values)
         
         if dyn_vals:
             all_dyn = np.vstack(dyn_vals)
@@ -72,6 +135,7 @@ class CamelsPreprocessor:
             self.scalers['dynamic_mean'] = 0
             self.scalers['dynamic_std'] = 1
 
+<<<<<<< Updated upstream
         # 2. Static Stats (Only if provided)
         # Note: Log-transform of area_gages2 is done in transform() method to avoid double transformation
         if static_df is not None:
@@ -82,13 +146,20 @@ class CamelsPreprocessor:
             self.scalers['static_std']  = static_df_copy.std().values + 1e-6
         else:
             print("-> Skipping Static Stats (Static Data not provided)")
+=======
+        # 2. Static Stats
+        if static_df is not None:
+            s_df = static_df.copy()
+            if 'area_gages2' in s_df.columns:
+                s_df['area_gages2'] = np.log10(np.maximum(s_df['area_gages2'], 1e-3))
+            self.scalers['static_mean'] = s_df.mean().values
+            self.scalers['static_std']  = s_df.std().values + 1e-6
+>>>>>>> Stashed changes
 
         # 3. Basin Target Stats
         print("Computing basin-specific target statistics...")
         for gid, df in dynamic_data_dict.items():
-            train_slice = df.loc[self.cfg.TRAIN_START:self.cfg.TRAIN_END]
-            clean_target = train_slice[self.cfg.TARGET].dropna()
-            
+            clean_target = df[self.cfg.TARGET]
             if not clean_target.empty:
                 self.basin_scalers[gid] = {'mean': clean_target.mean(), 'std': clean_target.std() + 1e-6}
             else:

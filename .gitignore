@@ -39,3 +39,7 @@ models/
 logs/
 results/
 .venv/
+env/
+
+*.pkl
+cache/
