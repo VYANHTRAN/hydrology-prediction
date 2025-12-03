@@ -26,6 +26,10 @@ class FeatureEngineer:
         Adds explicit lag features for Streamflow.
         Purpose: Give the model explicit access to yesterday's flow value 
         at the current timestep t, without relying solely on LSTM memory.
+        
+        Note: Shifting creates NaNs at the top of the dataframe.
+        These will be handled by the preprocessor's handle_missing_data() 
+        which runs AFTER feature engineering.
         """
         target = self.cfg.TARGET # 'Q_cms'
         
@@ -39,9 +43,8 @@ class FeatureEngineer:
             # Flow 3 days ago (t-3)
             df['Q_lag3'] = df[target].shift(3)
             
-            # Note: Shifting creates NaNs at the top of the dataframe.
-            # These must be handled (backfilled) before normalization.
-            df[[f'Q_lag{i}' for i in range(1, 4)]] = df[[f'Q_lag{i}' for i in range(1, 4)]].bfill()
+            # Note: NaNs at the start will be handled by preprocessor
+            # using proper interpolation with limit constraints
             
         return df
 

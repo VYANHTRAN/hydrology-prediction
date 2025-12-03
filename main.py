@@ -67,9 +67,15 @@ def prepare_data(cfg, loader, engineer, preprocessor, num_basins=5):
         
         df = loader.load_dynamic_data(gid, region)
         if df is not None:
+            # Order matters to avoid data leakage:
+            # 1. Clean physical outliers first
             df = preprocessor.clean_physical_outliers(df)
-            df = preprocessor.handle_missing_data(df)
+            # 2. Create lag/rolling features BEFORE interpolation
+            #    (so NaNs from shifting don't get filled with future info)
             df = engineer.transform(df)
+            # 3. Handle missing data (interpolate gaps) AFTER feature creation
+            df = preprocessor.handle_missing_data(df)
+            # 4. Add cyclical date features last
             df = preprocessor.add_date_features(df)
             dynamic_data[gid] = df
     

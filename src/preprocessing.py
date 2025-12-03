@@ -73,11 +73,13 @@ class CamelsPreprocessor:
             self.scalers['dynamic_std'] = 1
 
         # 2. Static Stats (Only if provided)
+        # Note: Log-transform of area_gages2 is done in transform() method to avoid double transformation
         if static_df is not None:
-            if 'area_gages2' in static_df.columns:
-                static_df['area_gages2'] = np.log10(np.maximum(static_df['area_gages2'], 1e-3))
-            self.scalers['static_mean'] = static_df.mean().values
-            self.scalers['static_std']  = static_df.std().values + 1e-6
+            static_df_copy = static_df.copy()
+            if 'area_gages2' in static_df_copy.columns:
+                static_df_copy['area_gages2'] = np.log10(np.maximum(static_df_copy['area_gages2'], 1e-3))
+            self.scalers['static_mean'] = static_df_copy.mean().values
+            self.scalers['static_std']  = static_df_copy.std().values + 1e-6
         else:
             print("-> Skipping Static Stats (Static Data not provided)")
 

@@ -6,6 +6,7 @@ class Config:
     # Sub-directories
     FORCING_DIR = os.path.join(BASE_DIR, 'basin_mean_forcing', 'nldas')
     FLOW_DIR = os.path.join(BASE_DIR, 'usgs_streamflow')
+    META_DIR = BASE_DIR  # Static attribute files are in the base directory
     BAD_BASINS_FILE = os.path.join(BASE_DIR, 'basin_size_errors_10_percent.txt')
 
     # --- CONSTANTS ---

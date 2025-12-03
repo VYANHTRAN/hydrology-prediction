@@ -52,7 +52,7 @@ class CamelsLoader:
         # 1. Load Streamflow
         flow_path = os.path.join(self.cfg.FLOW_DIR, region, f'{gauge_id}_streamflow_qc.txt')
         try:
-            df_flow = pd.read_csv(flow_path, delim_whitespace=True, header=None,
+            df_flow = pd.read_csv(flow_path, sep=r'\s+', header=None,
                                   names=['gauge_id', 'Year', 'Month', 'Day', 'Q_cfs', 'QC'])
         except: return None
 
@@ -66,7 +66,7 @@ class CamelsLoader:
         if not os.path.exists(forcing_path): return None
 
         try:
-            df_force = pd.read_csv(forcing_path, delim_whitespace=True, skiprows=3)
+            df_force = pd.read_csv(forcing_path, sep=r'\s+', skiprows=3)
         except: return None
 
         # Rename columns 
