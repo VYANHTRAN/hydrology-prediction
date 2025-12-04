@@ -19,13 +19,9 @@ from model import LSTM, LSTM_Seq2Seq
 # --- UTILS ---
 
 def calc_nse(obs, sim):
-<<<<<<< Updated upstream
-    """Nash-Sutcliffe Efficiency"""
-=======
     """
     Calculate metric Nash Sutcliffe efficiency for hydrological model. 
     """
->>>>>>> Stashed changes
     denominator = np.sum((obs - np.mean(obs)) ** 2) + 1e-6
     numerator = np.sum((sim - obs) ** 2)
     return 1 - (numerator / denominator)
@@ -46,15 +42,10 @@ def save_results(results, params, output_dir):
 
 def prepare_data(cfg, loader, engineer, preprocessor, num_basins=5):
     """
-<<<<<<< Updated upstream
-    Loads data, applies engineering, fits preprocessor.
-    num_basins: int, number of basins to load. 0 means load all.
-=======
     1. Loads Data & Splits (keeping NaNs initially)
     2. Fits Imputer on Train Split Only (Learns Climatology)
     3. Imputes Missing Values in Train, Val, Test using learned stats
     4. Fits Scaler on Cleaned Train Data
->>>>>>> Stashed changes
     """
     print("--- 1. Loading Data ---")
     df_basins = loader.get_basin_list()
@@ -72,36 +63,17 @@ def prepare_data(cfg, loader, engineer, preprocessor, num_basins=5):
     basin_ids = df_basins['gauge_id'].tolist()
     df_static = loader.load_static_attributes(basin_ids) if cfg.USE_STATIC else None
 
-<<<<<<< Updated upstream
-    dynamic_data = {}
-    print("Loading dynamic data...")
-=======
     # Temporary storage for raw splits 
     raw_train = {}
     raw_val = {}
     raw_test = {}
 
     print("Loading, Cleaning outliers, and Splitting data...")
->>>>>>> Stashed changes
     for _, row in tqdm(df_basins.iterrows(), total=len(df_basins)):
         gid = row['gauge_id']
         region = row['region']
         
         df = loader.load_dynamic_data(gid, region)
-<<<<<<< Updated upstream
-        if df is not None:
-            # Order matters to avoid data leakage:
-            # 1. Clean physical outliers first
-            df = preprocessor.clean_physical_outliers(df)
-            # 2. Create lag/rolling features BEFORE interpolation
-            #    (so NaNs from shifting don't get filled with future info)
-            df = engineer.transform(df)
-            # 3. Handle missing data (interpolate gaps) AFTER feature creation
-            df = preprocessor.handle_missing_data(df)
-            # 4. Add cyclical date features last
-            df = preprocessor.add_date_features(df)
-            dynamic_data[gid] = df
-=======
         if df is None: 
             continue
 
@@ -144,7 +116,6 @@ def prepare_data(cfg, loader, engineer, preprocessor, num_basins=5):
     # 7. Fit Scaler ONLY on Cleaned Training Data
     print("Fitting Scaler on Training Set...")
     preprocessor.fit(train_data, df_static)
->>>>>>> Stashed changes
     
     print("Fitting preprocessor...")
     preprocessor.fit(dynamic_data, df_static)
@@ -153,11 +124,7 @@ def prepare_data(cfg, loader, engineer, preprocessor, num_basins=5):
 
 # --- DATASET GENERATORS ---
 
-<<<<<<< Updated upstream
-def get_task1_dataset(cfg, dynamic_data, df_static, preprocessor, basin_ids, split='train'):
-=======
 def get_task1_dataset(cfg, data_dict, df_static, preprocessor, basin_ids):
->>>>>>> Stashed changes
     X_list, y_list = [], []
     if split == 'train': start, end = cfg.TRAIN_START, cfg.TRAIN_END
     elif split == 'val': start, end = cfg.VAL_START, cfg.VAL_END
@@ -178,11 +145,7 @@ def get_task1_dataset(cfg, data_dict, df_static, preprocessor, basin_ids):
     if not X_list: return None, None
     return np.concatenate(X_list), np.concatenate(y_list)
 
-<<<<<<< Updated upstream
-def get_task2_dataset(cfg, dynamic_data, df_static, preprocessor, basin_ids, split='train'):
-=======
 def get_task2_dataset(cfg, data_dict, df_static, preprocessor, basin_ids):
->>>>>>> Stashed changes
     X_past_list, X_future_list, Static_list, Y_list = [], [], [], []
     
     if split == 'train': start, end = cfg.TRAIN_START, cfg.TRAIN_END
@@ -193,13 +156,8 @@ def get_task2_dataset(cfg, data_dict, df_static, preprocessor, basin_ids):
     forcing_indices = [0, 1, 2, 3, 4] 
     
     for gid in basin_ids:
-<<<<<<< Updated upstream
-        if gid not in dynamic_data: continue
-        df = dynamic_data[gid].loc[start:end]
-=======
         if gid not in data_dict: continue
         df = data_dict[gid]
->>>>>>> Stashed changes
         if df.empty: continue
 
         data_matrix, static_vec = preprocessor.transform(df, df_static, gid)
@@ -211,16 +169,12 @@ def get_task2_dataset(cfg, data_dict, df_static, preprocessor, basin_ids):
         n_dyn = len(cfg.DYNAMIC_FEATURES)
         future_feat_indices = forcing_indices + [n_dyn, n_dyn + 1] # Forcing + Sin + Cos
 
-<<<<<<< Updated upstream
-        static_repeated = np.tile(static_vec, (seq_len, 1)) if (cfg.USE_STATIC and static_vec is not None) else None
-=======
         # Future forcing: Known Forcing indices + Date features (Indices n_dyn, n_dyn+1)
         future_feat_indices = forcing_indices + [n_dyn, n_dyn + 1] 
         
         # Prepare Static
         use_static = (cfg.USE_STATIC and static_vec is not None)
         static_repeated = np.tile(static_vec, (seq_len, 1)) if use_static else None
->>>>>>> Stashed changes
         
         c_xp, c_xf, c_st, c_y = [], [], [], []
 
@@ -342,15 +296,8 @@ def run_task_1(args, cfg, device, dynamic_data, df_static, preprocessor, basin_i
         print(f"Task 1 Test NSE: {nse:.4f}")
         save_results({'NSE': nse, 'Test_MSE': float(np.mean((y_test-preds)**2))}, vars(args), 'results/task1')
 
-<<<<<<< Updated upstream
-def run_task_2(args, cfg, device, dynamic_data, df_static, preprocessor, basin_ids):
-    print("\n" + "="*40)
-    print(" TASK 2: Multi-Step Sequence (t+1..t+5)")
-    print("="*40)
-=======
 def run_task_2(args, cfg, device, train_data, val_data, test_data, df_static, preprocessor, basin_ids):
     print("\n--- TASK 2: Multi-Step Sequence (t+1..t+5) ---")
->>>>>>> Stashed changes
 
     # 1. Dataset
     print("Preparing datasets...")
@@ -372,11 +319,8 @@ def run_task_2(args, cfg, device, train_data, val_data, test_data, df_static, pr
         val_ds = TensorDataset(torch.Tensor(val_data_tuple[0]), torch.Tensor(val_data_tuple[1]), torch.Tensor(val_data_tuple[3]))
         static_dim = 0
 
-<<<<<<< Updated upstream
     train_ds = TensorDataset(*[torch.Tensor(x) for x in tr_data])
     val_ds = TensorDataset(*[torch.Tensor(x) for x in val_data])
-=======
->>>>>>> Stashed changes
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False)
 

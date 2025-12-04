@@ -43,3 +43,6 @@ env/
 
 *.pkl
 cache/
+*.joblib
+*.ckpt
+hydrology-data/
