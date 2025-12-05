@@ -28,8 +28,12 @@ class CamelsPreprocessor:
         return df
 
     def clean_physical_outliers(self, df):
+<<<<<<< Updated upstream
+        # 1. Negative Rain/Flow -> 0
+=======
         """Ensure the data does not exceed logical constraints."""
         # Ensure that the precipiation could not be negative.
+>>>>>>> Stashed changes
         for col in ['PRCP', self.cfg.TARGET]:
             if col in df.columns:
                 mask = df[col] < 0
@@ -45,6 +49,9 @@ class CamelsPreprocessor:
                     df.loc[mask, col] = np.nan
         return df
 
+<<<<<<< Updated upstream
+    def handle_missing_data(self, df):
+=======
     def fit_imputer(self, train_data_dict):
         """
         Learn seasonal patterns from training set and impute using that patterns.
@@ -80,10 +87,17 @@ class CamelsPreprocessor:
         """
         Fill missing data with climatological means learned from training set. 
         """
+>>>>>>> Stashed changes
         cols_to_fix = [self.cfg.TARGET] + self.cfg.DYNAMIC_FEATURES
         cols_to_fix = [c for c in cols_to_fix if c in df.columns]
 
         for col in cols_to_fix:
+<<<<<<< Updated upstream
+            # Linear Interpolate short gaps only
+            df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='both')
+            # Handle edges
+            df[col] = df[col].ffill().bfill()
+=======
             df[col] = df[col].interpolate(method='linear', limit=self.MAX_INTERPOLATE_GAP, limit_direction='forward')
 
         # Retrieve basin-specific stats
@@ -100,6 +114,7 @@ class CamelsPreprocessor:
             df.fillna(basin_mean, inplace=True)
             
         df.fillna(0, inplace=True)
+>>>>>>> Stashed changes
         return df
 
     def fit(self, dynamic_data_dict, static_df=None):
@@ -121,6 +136,18 @@ class CamelsPreprocessor:
             self.scalers['dynamic_mean'] = 0
             self.scalers['dynamic_std'] = 1
 
+<<<<<<< Updated upstream
+        # 2. Static Stats (Only if provided)
+        # Note: Log-transform of area_gages2 is done in transform() method to avoid double transformation
+        if static_df is not None:
+            static_df_copy = static_df.copy()
+            if 'area_gages2' in static_df_copy.columns:
+                static_df_copy['area_gages2'] = np.log10(np.maximum(static_df_copy['area_gages2'], 1e-3))
+            self.scalers['static_mean'] = static_df_copy.mean().values
+            self.scalers['static_std']  = static_df_copy.std().values + 1e-6
+        else:
+            print("-> Skipping Static Stats (Static Data not provided)")
+=======
         # 2. Static Stats
         if static_df is not None:
             s_df = static_df.copy()
@@ -128,6 +155,7 @@ class CamelsPreprocessor:
                 s_df['area_gages2'] = np.log10(np.maximum(s_df['area_gages2'], 1e-3))
             self.scalers['static_mean'] = s_df.mean().values
             self.scalers['static_std']  = s_df.std().values + 1e-6
+>>>>>>> Stashed changes
 
         # 3. Basin Target Stats
         for gid, df in dynamic_data_dict.items():

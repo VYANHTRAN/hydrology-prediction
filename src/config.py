@@ -6,6 +6,7 @@ class Config:
     # Sub-directories
     FORCING_DIR = os.path.join(BASE_DIR, 'basin_mean_forcing', 'nldas')
     FLOW_DIR = os.path.join(BASE_DIR, 'usgs_streamflow')
+    META_DIR = BASE_DIR  # Static attribute files are in the base directory
     BAD_BASINS_FILE = os.path.join(BASE_DIR, 'basin_size_errors_10_percent.txt')
 
     # --- CONSTANTS ---
@@ -32,6 +33,10 @@ class Config:
     TEST_END    = '2010-09-30'
 
     # --- FEATURE SELECTION ---
+<<<<<<< Updated upstream
+    # Dynamic Inputs (Time-Series)
+    # Naming convention matches the cleaned output from data_loader
+=======
      # 1. PURE FORCING (Weather)
     # These are variables we assume are known in the future (from weather forecasts)
     FORCING_FEATURES = [
@@ -40,6 +45,7 @@ class Config:
 
     # 2. ALL DYNAMIC INPUTS
     # This includes Forcing + Derived Engineering Features + Auto-regressive features
+>>>>>>> Stashed changes
     DYNAMIC_FEATURES = [
         'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp',   
         'PRCP_roll3', 'PRCP_roll7',             

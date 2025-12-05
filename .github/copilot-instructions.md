@@ -17,7 +17,14 @@ You are acting as a Senior Research Engineer and Python Developer for a Hydrolog
 3. **Coding Convention**
    * Strictly follow **PEP8** standards.
    * Use type hinting (`typing`) for all function signatures.
+<<<<<<< Updated upstream
    * While the existing codebase uses `os.path`, prefer `pathlib` for new file manipulation modules where possible, but maintain consistency with `config.py` if modifying existing paths.
+=======
+<<<<<<< HEAD
+=======
+   * While the existing codebase uses `os.path`, prefer `pathlib` for new file manipulation modules where possible, but maintain consistency with `config.py` if modifying existing paths.
+>>>>>>> 33152ecc409826bd7acd69c38c4437343e83593c
+>>>>>>> Stashed changes
 
 4. **Consistency & Safety**
    * **Data Leakage Prevention:** Ensure strict chronological splitting (Train -> Val -> Test). Never shuffle time-series data during sequence creation.
@@ -30,5 +37,5 @@ You are acting as a Senior Research Engineer and Python Developer for a Hydrolog
 * **Data:** CAMELS Dataset (Meteorological Forcing + Static Catchment Attributes).
 * **Tasks:** 1. Single-step prediction (t+2).
     2. Seq2Seq prediction (t+1 to t+5) with Cross-Attention.
-* **Key Metric:** Nash-Sutcliffe Efficiency (NSE).
+* **Key Metric:**: MSE, RMSE, R^2, Nash-Sutcliffe Efficiency (NSE).
 * **Stack:** PyTorch (LSTM/Attention), Pandas, NumPy.
