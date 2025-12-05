@@ -33,19 +33,8 @@ class Config:
     TEST_END    = '2010-09-30'
 
     # --- FEATURE SELECTION ---
-<<<<<<< Updated upstream
     # Dynamic Inputs (Time-Series)
     # Naming convention matches the cleaned output from data_loader
-=======
-     # 1. PURE FORCING (Weather)
-    # These are variables we assume are known in the future (from weather forecasts)
-    FORCING_FEATURES = [
-        'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp'
-    ]
-
-    # 2. ALL DYNAMIC INPUTS
-    # This includes Forcing + Derived Engineering Features + Auto-regressive features
->>>>>>> Stashed changes
     DYNAMIC_FEATURES = [
         'PRCP', 'SRAD', 'Tmax', 'Tmin', 'Vp',   
         'PRCP_roll3', 'PRCP_roll7',             
